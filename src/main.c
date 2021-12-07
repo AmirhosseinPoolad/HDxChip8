@@ -101,7 +101,7 @@ int main()
         return 1;
     }
     unsigned int bufferSize = fread(romBuffer, sizeof(unsigned char), MEMORY_SIZE - PROGRAM_START, romFile);
-    for (int i = 0; i < bufferSize; i++)
+    for (unsigned int i = 0; i < bufferSize; i++)
         memory[PROGRAM_START + i] = romBuffer[i];
     unsigned int exit = 0;
 
@@ -119,7 +119,6 @@ int main()
     SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
     SDL_Texture *text = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, SCREEN_WIDTH, SCREEN_HEIGHT);
-    SDL_Rect rect = {0, 0, DEVICE_SCREEN_WIDTH, DEVICE_SCREEN_HEIGHT};
     unsigned int startTicks;
     unsigned int endTicks;
     unsigned char keyDown;
@@ -263,17 +262,18 @@ int main()
         switch (opcode & 0xF000)
         {
         case 0x0000:
-            switch (opcode & 0x00FF)
+            switch (opcode & 0x000F)
             {
-            case 0x00E0: //00E0 --- Clear the display
+            case 0x0000: //00E0 --- Clear the display
                 memset(screen, 0, sizeof(screen));
                 PC += 2;
                 break;
-            case 0x00EE: //00EE --- eturn from a subroutine
+            case 0x000E: //00EE --- eturn from a subroutine
                 if (SP != 0)
                 {
-                    PC = stack[SP]; //program counter = address at top of the stack
                     SP--;           //remove top of the stack
+                    PC = stack[SP]; //program counter = address at top of the stack
+                    PC += 2;
                 }
                 else
                 {
@@ -370,7 +370,7 @@ int main()
                 {
                     V[0xF] = 0;
                 }
-                V[(opcode & 0x0F00) >> 8] >> 1;
+                V[(opcode & 0x0F00) >> 8] = V[(opcode & 0x0F00) >> 8] >> 1;
                 PC += 2;
                 break;
             case 0x0007: //8xy7 --- Set Vx = Vy - Vx, set VF = NOT borrow
@@ -395,7 +395,7 @@ int main()
                 {
                     V[0xF] = 0;
                 }
-                V[(opcode & 0x0F00) >> 8] << 1;
+                V[(opcode & 0x0F00) >> 8] = V[(opcode & 0x0F00) >> 8] << 1;
                 PC += 2;
                 break;
             }
@@ -547,7 +547,7 @@ int main()
         endTicks = SDL_GetTicks();
         if ((endTicks - startTicks) < 16)
             SDL_Delay(16 - (endTicks - startTicks));
-        //SDL_Delay(150);
+        SDL_Delay(50);
     }
 }
 
