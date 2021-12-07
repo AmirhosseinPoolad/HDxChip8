@@ -1,6 +1,7 @@
 #include "stdio.h"
 #include "stdlib.h"
 #include "string.h"
+#include "time.h"
 
 #include "SDL.h"
 
@@ -24,6 +25,8 @@ void drawByteArrayToTexture(unsigned char *screen, SDL_Texture *screenTexture);
 
 int main()
 {
+    //seed the random function
+    srand(time(NULL));
     //System memory
     unsigned char memory[MEMORY_SIZE];
     //General porpuse registers
@@ -119,12 +122,10 @@ int main()
     SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
     SDL_Texture *text = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, SCREEN_WIDTH, SCREEN_HEIGHT);
-    unsigned int startTicks;
-    unsigned int endTicks;
+    unsigned int lastDelayTick = SDL_GetTicks();
     unsigned char keyDown;
     while (!exit) //main loop
     {
-        startTicks = SDL_GetTicks();
         //Handle input
         SDL_Event e;
         while (SDL_PollEvent(&e) != 0)
@@ -536,17 +537,19 @@ int main()
         default:
             break;
         }
-        if (delay_timer > 0)
-            delay_timer--;
-        if (sound_timer > 0)
-            sound_timer--;
+        if (SDL_GetTicks() - lastDelayTick >= 16) //counter works at 60Hz
+        {
+            if (delay_timer > 0)
+                delay_timer--;
+            if (sound_timer > 0)
+                sound_timer--;
+            lastDelayTick = SDL_GetTicks();
+        }
         drawByteArrayToTexture(screen, text);
         SDL_RenderClear(renderer);
         SDL_RenderCopy(renderer, text, NULL, NULL);
         SDL_RenderPresent(renderer);
-        endTicks = SDL_GetTicks();
-        if ((endTicks - startTicks) < 16)
-            SDL_Delay(16 - (endTicks - startTicks));
+        SDL_Delay(2); //approximatly 500hz. works well enough.
     }
 }
 
