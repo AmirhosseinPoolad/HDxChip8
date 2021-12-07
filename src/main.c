@@ -547,7 +547,6 @@ int main()
         endTicks = SDL_GetTicks();
         if ((endTicks - startTicks) < 16)
             SDL_Delay(16 - (endTicks - startTicks));
-        SDL_Delay(50);
     }
 }
 
