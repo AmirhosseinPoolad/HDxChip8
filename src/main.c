@@ -238,28 +238,33 @@ int main()
             PC = (opcode & 0x0FFF) + V[0x0];
             break;
         case 0xC000: //Cxkk --- Set Vx = random byte AND kk
+        {
             unsigned char random = rand() % 256;
             V[(opcode & 0x0F00) >> 8] = random & (opcode & 0x00FF);
             PC += 2;
+        }
+        break;
         case 0xD000: //Dxyn --- Display n-byte (n rows) sprite starting at memory location I at (Vx, Vy), set VF = collision.
             //Drawing is done by XORing the sprite with the screen. If any pixel gets erased during this a collision has happened
-            unsigned short x = (opcode & 0x0F00) >> 8;
-            unsigned short y = (opcode & 0x00F0) >> 4;
-            unsigned short n = (opcode & 0x000F);
-            for (int j = 0; j < n; j++)
             {
-                for (int i = 0; i < 8; i++)
+                unsigned short x = (opcode & 0x0F00) >> 8;
+                unsigned short y = (opcode & 0x00F0) >> 4;
+                unsigned short n = (opcode & 0x000F);
+                for (int j = 0; j < n; j++)
                 {
-                    //get pixel (i,j) of sprite
-                    unsigned char pixelValue = (memory[I + j] & (0x80 >> i)) >> (7 - i);
-                    //if pixel and screen are both 1
-                    if ((screen[screenCoordinatesToIndex(x + i, y + j)] == 1) && (pixelValue == 1))
-                        V[0xF] = 1; //collision
-                    //draw the pixel
-                    screen[screenCoordinatesToIndex(x + i, y + j)] ^= pixelValue;
+                    for (int i = 0; i < 8; i++)
+                    {
+                        //get pixel (i,j) of sprite
+                        unsigned char pixelValue = (memory[I + j] & (0x80 >> i)) >> (7 - i);
+                        //if pixel and screen are both 1
+                        if ((screen[screenCoordinatesToIndex(x + i, y + j)] == 1) && (pixelValue == 1))
+                            V[0xF] = 1; //collision
+                        //draw the pixel
+                        screen[screenCoordinatesToIndex(x + i, y + j)] ^= pixelValue;
+                    }
                 }
+                PC += 2;
             }
-            PC += 2;
             break;
         case 0xE000:
             switch (opcode & 0x00FF)
@@ -290,23 +295,63 @@ int main()
             switch (opcode & 0x00FF)
             {
             case 0x0007: //Fx07 --- Set Vx = delay timer value.
+                V[(opcode & 0x0F00) >> 8] = delay_timer;
+                PC += 2;
                 break;
             case 0x000A: //Fx0A --- Wait for a key press, store the value of the key in Vx.
+                //TODO
+                PC += 2;
                 break;
             case 0x0015: //Fx15 --- Set delay timer = Vx.
+                delay_timer = V[(opcode & 0x0F00) >> 8];
+                PC += 2;
                 break;
             case 0x0018: //Fx18 --- Set sound timer = Vx.
+                sound_timer = V[(opcode & 0x0F00) >> 8];
+                PC += 2;
                 break;
             case 0x001E: //Fx1E --- Set I = I + Vx.
+                I += V[(opcode & 0x0F00) >> 8];
+                PC += 2;
                 break;
             case 0x0029: //Fx29 --- Set I = location of sprite for digit Vx.
-                break;
+            {
+                I = FONTSET_START + V[(opcode & 0x0F00) >> 8] * FONT_HEIGHT;
+                PC += 2;
+            }
+            break;
             case 0x0033: //Fx33 --- Store BCD representation of Vx in memory locations I, I+1, and I+2.
-                break;
+            {
+                unsigned char num = V[(opcode & 0x0F00) >> 8];
+                unsigned char ones = num % 10;
+                unsigned char tens = (num / 10) % 10;
+                unsigned char hundreds = (num / 100) % 10;
+                memory[I] = hundreds;
+                memory[I + 1] = tens;
+                memory[I + 2] = ones;
+                PC += 2;
+            }
+            break;
             case 0x0055: //Fx55 --- Store registers V0 through Vx in memory starting at location I.
-                break;
+            {
+                int x = (opcode & 0x0F00) >> 8;
+                for (int i = 0; i <= x; i++)
+                {
+                    memory[I + i] = V[i];
+                }
+                PC += 2;
+            }
+            break;
             case 0x0065: //Fx65 --- Read registers V0 through Vx from memory starting at location I.
-                break;
+            {
+                int x = (opcode & 0x0F00) >> 8;
+                for (int i = 0; i <= x; i++)
+                {
+                    V[i] = memory[I + i];
+                }
+                PC += 2;
+            }
+            break;
             }
             break;
         default:
