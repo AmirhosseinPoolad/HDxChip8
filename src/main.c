@@ -266,7 +266,7 @@ int main()
             switch (opcode & 0x00FF)
             {
             case 0x00E0: //00E0 --- Clear the display
-                //memset(screen, 0, sizeof(screen));
+                memset(screen, 0, sizeof(screen));
                 PC += 2;
                 break;
             case 0x00EE: //00EE --- eturn from a subroutine
