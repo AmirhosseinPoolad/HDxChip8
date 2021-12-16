@@ -22,9 +22,14 @@
 
 int screenCoordinatesToIndex(unsigned char x, unsigned char y);
 void drawByteArrayToTexture(unsigned char *screen, SDL_Texture *screenTexture);
+void waitForTick(uint64_t initialTick, uint64_t intervalTick);
 
 int main()
 {
+    //OS dependent timer frequency
+    uint64_t timerFrequency = SDL_GetPerformanceFrequency();
+    //multiply this by Xusec to get amount of ticks needed to pass Xusec
+    uint64_t microConvertCoeff = timerFrequency / 1e6;
     //seed the random function
     srand(time(NULL));
     //System memory
@@ -208,55 +213,72 @@ int main()
                 {
                 case SDLK_1:
                     key[0x1] = 0;
+                    keyDown = 0xFF;
                     break;
                 case SDLK_2:
                     key[0x2] = 0;
+                    keyDown = 0xFF;
                     break;
                 case SDLK_3:
                     key[0x3] = 0;
+                    keyDown = 0xFF;
                     break;
                 case SDLK_4:
                     key[0xC] = 0;
+                    keyDown = 0xFF;
                     break;
                 case SDLK_q:
                     key[0x4] = 0;
+                    keyDown = 0xFF;
                     break;
                 case SDLK_w:
                     key[0x5] = 0;
+                    keyDown = 0xFF;
                     break;
                 case SDLK_e:
                     key[0x6] = 0;
+                    keyDown = 0xFF;
                     break;
                 case SDLK_r:
                     key[0xD] = 0;
+                    keyDown = 0xFF;
                     break;
                 case SDLK_a:
                     key[0x7] = 0;
+                    keyDown = 0xFF;
                     break;
                 case SDLK_s:
                     key[0x8] = 0;
+                    keyDown = 0xFF;
                     break;
                 case SDLK_d:
-                    key[0x8] = 0;
+                    key[0x9] = 0;
+                    keyDown = 0xFF;
                     break;
                 case SDLK_f:
                     key[0xE] = 0;
+                    keyDown = 0xFF;
                     break;
                 case SDLK_z:
                     key[0xA] = 0;
+                    keyDown = 0xFF;
                     break;
                 case SDLK_x:
                     key[0x0] = 0;
+                    keyDown = 0xFF;
                     break;
                 case SDLK_c:
                     key[0xB] = 0;
+                    keyDown = 0xFF;
                     break;
                 case SDLK_v:
                     key[0xF] = 0;
+                    keyDown = 0xFF;
                     break;
                 }
             }
         }
+        uint64_t startTick = SDL_GetPerformanceCounter();
         //each element is one byte, so we shift the first bite
         //into the most significant byte and the one after it into the least significant byte of opcode
         opcode = memory[PC] << 8 | memory[PC + 1];
@@ -268,6 +290,7 @@ int main()
             case 0x0000: //00E0 --- Clear the display
                 memset(screen, 0, sizeof(screen));
                 PC += 2;
+                waitForTick(startTick, 109 * microConvertCoeff);
                 break;
             case 0x000E: //00EE --- eturn from a subroutine
                 if (SP != 0)
@@ -280,42 +303,50 @@ int main()
                 {
                     PC += 2;
                 }
+                waitForTick(startTick, 105 * microConvertCoeff);
                 break;
             }
             break;
         case 0x1000: //1nnn --- jump PC to nnn
             PC = opcode & 0x0FFF;
+            waitForTick(startTick, 105 * microConvertCoeff);
             break;
         case 0x2000: //2nnn --- call subroutine at nnn
             stack[SP] = PC;
             PC = opcode & 0x0FFF;
             SP++;
+            waitForTick(startTick, 105 * microConvertCoeff);
             break;
         case 0x3000: //3xkk --- skip next instruction if Vx == kk
             if (V[(opcode & 0x0F00) >> 8] == (opcode & 0x00FF))
                 PC += 4; //two for this execution, 2 for the next
             else
                 PC += 2;
+            waitForTick(startTick, 55 * microConvertCoeff);
             break;
         case 0x4000: //4xkk --- skip next instruction if Vx != kk
             if (V[(opcode & 0x0F00) >> 8] != (opcode & 0x00FF))
                 PC += 4;
             else
                 PC += 2;
+            waitForTick(startTick, 55 * microConvertCoeff);
             break;
         case 0x5000: //5xy0 --- skip next instruction if Vx == Vy
             if (V[(opcode & 0x0F00) >> 8] == V[(opcode & 0x00F0) >> 4])
                 PC += 4;
             else
                 PC += 2;
+            waitForTick(startTick, 73 * microConvertCoeff);
             break;
         case 0x6000: //6xkk --- set Vx = kk
             V[(opcode & 0x0F00) >> 8] = (opcode & 0x00FF);
             PC += 2;
+            waitForTick(startTick, 27 * microConvertCoeff);
             break;
         case 0x7000: //7xkk --- set Vx = Vx + kk;
             V[(opcode & 0x0F00) >> 8] += (opcode & 0x00FF);
             PC += 2;
+            waitForTick(startTick, 45 * microConvertCoeff);
             break;
         case 0x8000:
             switch (opcode & 0x000F)
@@ -400,25 +431,31 @@ int main()
                 PC += 2;
                 break;
             }
+            //all 8xxx opcodes take 200 us to finish
+            waitForTick(startTick, 200 * microConvertCoeff);
             break;
         case 0x9000: //9xy0 --- Skip next instruction if Vx != Vy
             if (V[(opcode & 0x0F00) >> 8] != V[(opcode & 0x00F0) >> 4])
                 PC += 4;
             else
                 PC += 2;
+            waitForTick(startTick, 73 * microConvertCoeff);
             break;
         case 0xA000: //Annn --- Set I = nnn
             I = opcode & 0x0FFF;
             PC += 2;
+            waitForTick(startTick, 55 * microConvertCoeff);
             break;
         case 0xB000: //Bnnn --- Jump to location nnn + V0
             PC = (opcode & 0x0FFF) + V[0x0];
+            waitForTick(startTick, 105 * microConvertCoeff);
             break;
         case 0xC000: //Cxkk --- Set Vx = random byte AND kk
         {
             unsigned char random = rand() % 256;
             V[(opcode & 0x0F00) >> 8] = random & (opcode & 0x00FF);
             PC += 2;
+            waitForTick(startTick, 164 * microConvertCoeff);
         }
         break;
         case 0xD000: //Dxyn --- Display n-byte (n rows) sprite starting at memory location I at (Vx, Vy), set VF = collision.
@@ -441,13 +478,14 @@ int main()
                     }
                 }
                 PC += 2;
+                waitForTick(startTick, 22734 * microConvertCoeff);
             }
             break;
         case 0xE000:
             switch (opcode & 0x00FF)
             {
             case 0x009E: //Ex9E --- Skip next instruction if key with the value of Vx is pressed.
-                if (key[V[(opcode & 0x0F00) >> 8]])
+                if (key[V[(opcode & 0x0F00) >> 8]] != 0)
                 {
                     PC += 4;
                 }
@@ -457,7 +495,7 @@ int main()
                 }
                 break;
             case 0x00A1: //ExA1 --- Skip next instruction if key with the value of Vx is not pressed.
-                if (!key[V[(opcode & 0x0F00) >> 8]])
+                if (key[V[(opcode & 0x0F00) >> 8]] == 0)
                 {
                     PC += 4;
                 }
@@ -467,6 +505,7 @@ int main()
                 }
                 break;
             }
+            waitForTick(startTick, 73 * microConvertCoeff);
             break;
         case 0xF000:
             switch (opcode & 0x00FF)
@@ -474,6 +513,7 @@ int main()
             case 0x0007: //Fx07 --- Set Vx = delay timer value.
                 V[(opcode & 0x0F00) >> 8] = delay_timer;
                 PC += 2;
+                waitForTick(startTick, 45 * microConvertCoeff);
                 break;
             case 0x000A: //Fx0A --- Wait for a key press, store the value of the key in Vx.
                 if (keyDown != 0)
@@ -485,19 +525,23 @@ int main()
             case 0x0015: //Fx15 --- Set delay timer = Vx.
                 delay_timer = V[(opcode & 0x0F00) >> 8];
                 PC += 2;
+                waitForTick(startTick, 45 * microConvertCoeff);
                 break;
             case 0x0018: //Fx18 --- Set sound timer = Vx.
                 sound_timer = V[(opcode & 0x0F00) >> 8];
                 PC += 2;
+                waitForTick(startTick, 45 * microConvertCoeff);
                 break;
             case 0x001E: //Fx1E --- Set I = I + Vx.
                 I += V[(opcode & 0x0F00) >> 8];
                 PC += 2;
+                waitForTick(startTick, 86 * microConvertCoeff);
                 break;
             case 0x0029: //Fx29 --- Set I = location of sprite for digit Vx.
             {
                 I = FONTSET_START + V[(opcode & 0x0F00) >> 8] * FONT_HEIGHT;
                 PC += 2;
+                waitForTick(startTick, 29 * microConvertCoeff);
             }
             break;
             case 0x0033: //Fx33 --- Store BCD representation of Vx in memory locations I, I+1, and I+2.
@@ -510,6 +554,7 @@ int main()
                 memory[I + 1] = tens;
                 memory[I + 2] = ones;
                 PC += 2;
+                waitForTick(startTick, (364 + (ones + tens + hundreds) * 73) * microConvertCoeff);
             }
             break;
             case 0x0055: //Fx55 --- Store registers V0 through Vx in memory starting at location I.
@@ -520,6 +565,7 @@ int main()
                     memory[I + i] = V[i];
                 }
                 PC += 2;
+                waitForTick(startTick, (64 + (x * 64)) * microConvertCoeff);
             }
             break;
             case 0x0065: //Fx65 --- Read registers V0 through Vx from memory starting at location I.
@@ -530,6 +576,7 @@ int main()
                     V[i] = memory[I + i];
                 }
                 PC += 2;
+                waitForTick(startTick, (64 + (x * 64)) * microConvertCoeff);
             }
             break;
             }
@@ -549,7 +596,7 @@ int main()
         SDL_RenderClear(renderer);
         SDL_RenderCopy(renderer, text, NULL, NULL);
         SDL_RenderPresent(renderer);
-        SDL_Delay(2); //approximatly 500hz. works well enough.
+        //SDL_Delay(2); //approximatly 500hz. works well enough.
     }
 }
 
@@ -582,4 +629,13 @@ void drawByteArrayToTexture(unsigned char *screen, SDL_Texture *screenTexture)
         }
     }
     SDL_UpdateTexture(screenTexture, NULL, textureBuffer, SCREEN_WIDTH * sizeof(uint32_t));
+}
+
+void waitForTick(uint64_t initialTick, uint64_t intervalTick)
+{
+    while (SDL_GetPerformanceCounter() < (initialTick + intervalTick))
+    {
+        continue;
+    }
+    return;
 }
